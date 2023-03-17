@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import sys
-import os
 import argparse
 import serda_data_sel as data_sel
 # import serda_data_prep as data_prep

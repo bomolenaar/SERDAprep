@@ -3,11 +3,13 @@
 
 import sys
 import os
+import argparse
 import shutil
 from subprocess import run, PIPE
-import pandas as pd
 import re
 import pathlib
+import pandas as pd
+
 
 """"
 @Author:        Bo Molenaar
@@ -23,119 +25,129 @@ Audio files for word tasks are split on single words with added word ID tag.
 """
 
 
-if len(sys.argv) < 6:
-    print(f"You must add 5 arguments:\n1) A path to the location of the audio\n2) A path to the location of the logs\n"
-    "3) A directory to process audio\n4) A directory to process logs\n5) Story prompts path")
-    sys.exit(-1)
+parser = argparse.ArgumentParser()
+parser.add_argument('-c', '--clean', help = "Flag specifying whether you want to generate new directories. Default=False", action = 'store_true')
+parser.add_argument('audio_zip', help = "Path to raw audio zip")
+parser.add_argument('log_zip', help = "Path to raw log zip")
+parser.add_argument('audio_path', help = "Path to audio processing and storing dir")
+parser.add_argument('log_path', help = "Path to log processing and storing dir")
+parser.add_argument('recs_to_ignore', help = "Location of a file specifying recordings to ignore")
+args = parser.parse_args()
 
-audio_zip = sys.argv[1]
-log_zip = sys.argv[2]
-audio_path = os.path.join(os.getcwd(), sys.argv[3])
-log_path = os.path.join(os.getcwd(), sys.argv[4])
-prompts_source = os.path.join(os.getcwd(), sys.argv[5])
-
-words_dir = "words"
-stories_dir = "stories"
-long_stories_dir = "long_stories"
-segments_dir = "words/segments"
-
-audio_words_path = os.path.join(audio_path, words_dir, "full")
-audio_stories_path = os.path.join(audio_path, stories_dir)
-log_words_path = os.path.join(log_path, words_dir)
-log_stories_path = os.path.join(log_path, stories_dir)
-
-long_stories_path = os.path.join(audio_path, long_stories_dir)
-words_segments_path = os.path.join(audio_path, segments_dir)
-
-recs_to_ignore = "/vol/tensusers4/bmolenaar/SERDA/scripts/recs_to_ignore.txt"
-
-def gen_clean_dict():
+def gen_clean_dict(audio_raw, log_raw, audio_dir, log_dir, ignore_recs, clean_dirs):
     """
     This function encapsulates the entire data selection procedure,
     from audio and log zips + prompt files to directories of stories and segmented words.
     Story audio over 3 minutes is trimmed and specified recordings are ignored.
     """
-    with open(recs_to_ignore, "r", encoding="utf-8") as recs:
+
+    # declare some directories to use
+    words_dir = "words"
+    stories_dir = "stories"
+    long_stories_dir = "long_stories"
+
+    audio_words_path = os.path.join(audio_dir, words_dir, "full")
+    audio_stories_path = os.path.join(audio_dir, stories_dir)
+    log_words_path = os.path.join(log_dir, words_dir)
+    log_stories_path = os.path.join(log_dir, stories_dir)
+
+    long_stories_path = os.path.join(audio_dir, long_stories_dir)
+
+    with open(ignore_recs, "r", encoding="utf-8") as recs:
         faulty_stories = [x.strip("\n ") for x in recs.readlines()]
 
-    #  remove working directories for audio and logs and create fresh ones
-    for path in [audio_path, log_path]:
-        if os.path.isdir(path):
-            shutil.rmtree(path)
-        os.mkdir(path)
-    dir_lst = [audio_words_path, audio_stories_path,
-            log_words_path, log_stories_path,
-            long_stories_path, words_segments_path]
-    for mydir in dir_lst:
-        pathlib.Path(mydir).mkdir(parents=True, exist_ok=True)
+    if clean_dirs:
+        print("Clearing existing folders and creating new ones.")
 
-    # unzip audio and log files into the path specified at call
-    # print("Unzipping audio files...")
-    run(f"unzip -ojqq {audio_zip} -d {audio_path}", shell=True, check=True)
-    # print("Unzipping log files...")
-    run(f"unzip -ojqq {log_zip} -d {log_path}", shell=True, check=True)
+        #  remove working directories for audio and logs and create fresh ones
+        for path in [audio_dir, log_dir]:
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            os.mkdir(path)
+        dir_lst = [audio_words_path, audio_stories_path,
+                log_words_path, log_stories_path,
+                long_stories_path]
+        for mydir in dir_lst:
+            pathlib.Path(mydir).mkdir(parents=True, exist_ok=True)
 
-    # gather audio files in a list
-    audio_filelist = []
-    for dirpath, dirnames, filenames in os.walk(audio_path):
-        for filename in filenames:
-            if filename.endswith(".webm"):
-                audio_filelist.append(filename)
+        # unzip audio and log files into the path specified at call
+        print("Unzipping audio files...")
+        run(f"unzip -ojqq {audio_raw} -d {audio_dir}", shell=True, check=True)
+        print("Unzipping log files...")
+        run(f"unzip -ojqq {log_raw} -d {log_dir}", shell=True, check=True)
+
+        # gather audio files in a list
+        audio_filelist = []
+        for dirpath, dirnames, filenames in os.walk(audio_dir):
+            for filename in filenames:
+                if filename.endswith(".webm"):
+                    audio_filelist.append(filename)
 
 
-    # convert .webm files in audio dir to .wav with encoding = pcm_s32le
-    # print("Converting audio files from .webm to .wav...")
-    for file in audio_filelist:
-        infile = os.path.join(audio_path, file)
-        outfile = infile.replace('webm', 'wav')
-        run(f"ffmpeg -hide_banner -loglevel error -i {infile} -c:a pcm_s32le {outfile}", shell=True, check=True)
-        run(f"rm {infile}", shell=True, check=True)
+        # convert .webm files in audio dir to .wav with encoding = pcm_s32le
+        print("Converting audio files from .webm to .wav...")
+        for file in audio_filelist:
+            infile = os.path.join(audio_dir, file)
+            outfile = infile.replace('webm', 'wav')
+            run(f"ffmpeg -hide_banner -loglevel error -i {infile} -c:a pcm_s32le {outfile}", shell=True, check=True)
+            run(f"rm {infile}", shell=True, check=True)
 
-    # move audio files to the correct folder based on task type (words or story)
-    # print("Moving audio files...")
-    for f in audio_filelist:
-        if 'webm' in f:
-            f = f.replace('webm', 'wav')
-        f_old = os.path.join(audio_path, f)
-        if "words" in f:
-            f_new = os.path.join(audio_words_path, f)   # keep target as var
-            shutil.move(f_old, f_new)                 # move to target location
-        elif "story" in f:
-            f_new = os.path.join(audio_stories_path, f)     # keep target as var
-            shutil.move(f_old, f_new)                     # move to target location
-        else:
-            f_new = ''
+        # move audio files to the correct folder based on task type (words or story)
+        print("Moving audio files...")
+        for f in audio_filelist:
+            if 'webm' in f:
+                f = f.replace('webm', 'wav')
+            f_old = os.path.join(audio_dir, f)
+            if "words" in f:
+                f_new = os.path.join(audio_words_path, f)   # keep target as var
+                shutil.move(f_old, f_new)                 # move to target location
+            elif "story" in f:
+                f_new = os.path.join(audio_stories_path, f)     # keep target as var
+                shutil.move(f_old, f_new)                     # move to target location
+            else:
+                f_new = ''
 
-    # gather log files in a list and prepare a dict
-    log_filelist = []
-    for dirpath, dirnames, filenames in os.walk(log_path):
-        for filename in filenames:
-            if filename.endswith(".csv"):
-                log_filelist.append(filename)
-    log_files = {}
+        # gather log files in a list and prepare a dict
+        log_filelist = []
+        for dirpath, dirnames, filenames in os.walk(log_dir):
+            for filename in filenames:
+                if filename.endswith(".csv"):
+                    log_filelist.append(filename)
+        log_files = {}
 
-    # move log files and assign their location to their rec id in the dict
-    # print("Moving log files...")
-    for f in log_filelist:
-        f_old = os.path.join(log_path, f)
-        if "$" in f:
-            f = f"{f.split('-$')[0]}.csv"
-        if "words" in f:
-            f_new = os.path.join(log_words_path, f)     # keep target as var
-            shutil.move(f_old, f_new)                   # move to target location
-        elif "story" in f:
-            f_new = os.path.join(log_stories_path, f)       # keep target as var
-            shutil.move(f_old, f_new)                       # move to target location
-        else:
-            f_new = ''
-        # use the filename to generate a recording ID tag
-        rec_id = f.split('.')[0]
-        # then link full path to audio to rec ID in a dict
-        log_files[rec_id] = f_new
+        # move log files and assign their location to their rec id in the dict
+        print("Moving log files...")
+        for f in log_filelist:
+            f_old = os.path.join(log_dir, f)
+            if "$" in f:
+                f = f"{f.split('-$')[0]}.csv"
+            if "words" in f:
+                f_new = os.path.join(log_words_path, f)     # keep target as var
+                shutil.move(f_old, f_new)                   # move to target location
+            elif "story" in f:
+                f_new = os.path.join(log_stories_path, f)       # keep target as var
+                shutil.move(f_old, f_new)                       # move to target location
+            else:
+                f_new = ''
+            # use the filename to generate a recording ID tag
+            rec_id = f.split('.')[0]
+            # then link full path to audio to rec ID in a dict
+            log_files[rec_id] = f_new
+    
+    else:
+        # gather log files in a list and prepare a dict
+        log_filelist = []
+        log_files = {}
+        for dirpath, dirnames, filenames in os.walk(log_dir):
+            for filename in filenames:
+                if filename.endswith(".csv"):
+                    log_filelist.append(filename)
+                    rec_id = filename.split('.')[0]
+                    log_files[rec_id] = os.path.join(log_dir, filename)
 
     # gather converted audio files in a list and assign their location to their rec id in a dict
     audio_files = {}
-    for dirpath, dirnames, filenames in os.walk(audio_path):
+    for dirpath, dirnames, filenames in os.walk(audio_dir):
         for filename in filenames:
             if filename.endswith(".wav"):
                 rec_id = filename.split('.')[0]
@@ -147,32 +159,34 @@ def gen_clean_dict():
     for rec_id, audiopath in audio_files.items():
         # print(rec_id, "\t", audio_files[rec_id], "\t", log_files[rec_id])
         full_dict[rec_id] = audiopath, log_files[rec_id]
+    # print(list(full_dict.items())[:10])
 
     #  remove stories with faulty recordings from the dataset (specified in a txt file)
     for s in faulty_stories:
         full_dict.pop(s)
 
-    #  Now we can use the dict to pull matching audio and log files and process them
-    #  e.g. with sox and pandas, respectively
-    long_stories = {}  #  dict of story audio files that are over 3 min long and need to be cropped
+    if clean_dirs:
+        #  Now we can use the dict to pull matching audio and log files and process them
+        #  e.g. with sox and pandas, respectively
+        long_stories = {}  #  dict of story audio files that are over 3 min long and need to be cropped
 
-    for rec_id, (audio, log) in full_dict.items():
-        if "story" in rec_id:
-            # get audio length and check if recordings are over 3 minutes long
-            audio_length = float(
-                run(['soxi', '-D', audio], stdout=PIPE, check=True).stdout.decode('utf-8').strip("\n "))
-            if audio_length > 180:
-                # print(f"{rec_id}\t\tThis story reading is {audio_length}s long."
-                # "This is longer than 3 minutes, please crop it.")
-                long_stories[rec_id] = audio, audio_length
+        for rec_id, (audio, log) in full_dict.items():
+            if "story" in rec_id:
+                # get audio length and check if recordings are over 3 minutes long
+                audio_length = float(
+                    run(['soxi', '-D', audio], stdout=PIPE, check=True).stdout.decode('utf-8').strip("\n "))
+                if audio_length > 180:
+                    # print(f"{rec_id}\t\tThis story reading is {audio_length}s long."
+                    # "This is longer than 3 minutes, please crop it.")
+                    long_stories[rec_id] = audio, audio_length
 
-    long_stories_data = pd.DataFrame(long_stories).T.rename_axis("Recording ID")
-    long_stories_data.columns = ['Path', 'Duration (s)']
-    long_stories_data.to_excel(os.path.join(audio_path, "long_stories.xlsx"))
+        long_stories_data = pd.DataFrame(long_stories).T.rename_axis("Recording ID")
+        long_stories_data.columns = ['Path', 'Duration (s)']
+        long_stories_data.to_excel(os.path.join(audio_dir, "long_stories.xlsx"))
 
-    trim_long_stories(long_stories, audio_path)
+        trim_long_stories(long_stories, audio_dir)
 
-    print(full_dict)
+    return full_dict
 
 
 def trim_long_stories(stories_dict, audio_dir):
@@ -183,7 +197,7 @@ def trim_long_stories(stories_dict, audio_dir):
     that silence marker, then saves it, overwriting the original file.
     If no silence is found, trims at 180s.
     """
-    # print(f"Trimming {len(stories_dict.items())} stories to 3 mins...")
+    print(f"Trimming {len(stories_dict.items())} stories to 3 mins...")
     
     audio_tmp_dir = os.path.join(audio_dir, "tmp")
     run(f"mkdir {audio_tmp_dir}", check=True, shell=True)
@@ -224,5 +238,5 @@ def trim_long_stories(stories_dict, audio_dir):
         run(f"mv {audio_tmp} {audio}", check=True, shell=True)
     shutil.rmtree(audio_tmp_dir)
 
-
-gen_clean_dict()
+if __name__ == "__main__":
+    gen_clean_dict(args.audio_zip, args.log_zip, args.audio_path, args.log_path, args.recs_to_ignore, args.clean)

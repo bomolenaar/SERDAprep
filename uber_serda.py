@@ -3,36 +3,32 @@
 
 import sys
 import os
-import shutil
-from subprocess import run, PIPE, check_output
-import pathlib
-import ast
-
-if len(sys.argv) < 7:
-    print(f"You must add 6 arguments:\n1) Audio path\n2) Logs path\n"
-    "3) A directory to process & place audio\n4) A directory to process & place logs\n"
-    "5) Story prompts path\n6) A directory to process & place prompts")
-    sys.exit(-1)
-
-audio_zip = sys.argv[1]
-log_zip = sys.argv[2]
-audio_path = os.path.join(os.getcwd(), sys.argv[3])
-log_path = os.path.join(os.getcwd(), sys.argv[4])
-prompts_source = os.path.join(os.getcwd(), sys.argv[5])
-prompt_path = os.path.join(os.getcwd(), sys.argv[6])
+import argparse
+import serda_data_sel as data_sel
+# import serda_data_prep as data_prep
 
 
-sel_cmd = f"python3 scripts/serda_data_sel.py {audio_zip} {log_zip} {audio_path} {log_path} {prompts_source}"
-prep_cmd = f"python3 scripts/serda_data_prep.py {audio_path} {log_path} {prompts_source} {prompt_path}"
+parser = argparse.ArgumentParser()
+parser.add_argument('-c', '--clean', help = "Flag specifying whether you want to generate new directories. Default=False", action = 'store_true')
+parser.add_argument('audio_zip', help = "Path to raw audio zip")
+parser.add_argument('log_zip', help = "Path to raw log zip")
+parser.add_argument('audio_path', help = "Path to audio processing and storing dir")
+parser.add_argument('log_path', help = "Path to log processing and storing dir")
+parser.add_argument('prompts_source', help = "Path to story prompts")
+parser.add_argument('prompt_path', help = "Path to prompt processing and storing dir")
+parser.add_argument('recs_to_ignore', help = "Location of a file specifying recordings to ignore")
+args = parser.parse_args()
 
-print("Gathering data...")
-full_dict = ast.literal_eval(check_output(sel_cmd, shell=True, text=True))
+print("\n###\tSERDA v1 data processing\t###\n")
 
-for key, value in full_dict.items()[:10]:
-    print(key, value)
+print("\n# Data selection  #\n")
+full_dict = data_sel.gen_clean_dict(args.audio_zip, args.log_zip, args.audio_path, args.log_path, args.recs_to_ignore, args.clean)
+
+# for rec_id, (audio, log) in list(full_dict.items())[:10]:
+#     print(f"{rec_id}\n{audio}\n{log}\n")
+
+print("\n# Data preparation #\n")
 
 # TODO:
-# need to pass the dict from data_sel as an arg to data_prep,
-# but python items (like a dict) cannot be passed to command line
-# so preferably we import and call data_prep functions in this script directly to avoid that problem
-# or !! better we import and call data_sel functions in data_prep!!!
+# import and call data_prep functions in this script directly, using full_dict as input
+

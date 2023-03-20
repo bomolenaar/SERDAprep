@@ -25,16 +25,8 @@ Audio files for word tasks are split on single words with added word ID tag.
 """
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-c', '--clean', help = "Flag specifying whether you want to generate new directories. Default=False", action = 'store_true')
-parser.add_argument('audio_zip', help = "Path to raw audio zip")
-parser.add_argument('log_zip', help = "Path to raw log zip")
-parser.add_argument('audio_path', help = "Path to audio processing and storing dir")
-parser.add_argument('log_path', help = "Path to log processing and storing dir")
-parser.add_argument('recs_to_ignore', help = "Location of a file specifying recordings to ignore")
-args = parser.parse_args()
 
-def gen_clean_dict(audio_raw, log_raw, audio_dir, log_dir, ignore_recs, clean_dirs):
+def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None, log_raw = None):
     """
     This function encapsulates the entire data selection procedure,
     from audio and log zips + prompt files to directories of stories and segmented words.
@@ -133,7 +125,7 @@ def gen_clean_dict(audio_raw, log_raw, audio_dir, log_dir, ignore_recs, clean_di
             rec_id = f.split('.')[0]
             # then link full path to audio to rec ID in a dict
             log_files[rec_id] = f_new
-    
+
     else:
         # gather log files in a list and prepare a dict
         log_filelist = []
@@ -143,7 +135,7 @@ def gen_clean_dict(audio_raw, log_raw, audio_dir, log_dir, ignore_recs, clean_di
                 if filename.endswith(".csv"):
                     log_filelist.append(filename)
                     rec_id = filename.split('.')[0]
-                    log_files[rec_id] = os.path.join(log_dir, filename)
+                    log_files[rec_id] = os.path.join(dirpath, filename)
 
     # gather converted audio files in a list and assign their location to their rec id in a dict
     audio_files = {}
@@ -239,4 +231,19 @@ def trim_long_stories(stories_dict, audio_dir):
     shutil.rmtree(audio_tmp_dir)
 
 if __name__ == "__main__":
-    gen_clean_dict(args.audio_zip, args.log_zip, args.audio_path, args.log_path, args.recs_to_ignore, args.clean)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--clean', help = "Flag specifying whether you want to generate new directories. Default=False", action = 'store_true', required=False)
+    parser.add_argument('-a', '--audiozip', required='--clean' in sys.argv, help = "Path to raw audio zip. Required when using --clean.")
+    parser.add_argument('-l', '--logzip', required='--clean' in sys.argv, help = "Path to raw log zip. Required when using --clean")
+    parser.add_argument('audio_path', help = "Path to audio processing and storing dir")
+    parser.add_argument('log_path', help = "Path to log processing and storing dir")
+    parser.add_argument('recs_to_ignore', help = "Location of a file specifying recordings to ignore")
+    args = parser.parse_args()
+    if args.clean and (args.audiozip is None or args.logzip is None):
+        parser.error("--clean requires --audiozip and --logzip.")
+        
+    if args.clean:
+        gen_clean_dict(args.audio_path, args.log_path, args.recs_to_ignore, args.clean, args.audio_zip, args.log_zip)
+    else:
+        gen_clean_dict(args.audio_path, args.log_path, args.recs_to_ignore, args.clean)

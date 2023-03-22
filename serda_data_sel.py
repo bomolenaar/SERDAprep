@@ -46,26 +46,22 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
     long_stories_path = os.path.join(audio_dir, long_stories_dir)
 
     with open(ignore_recs, "r", encoding="utf-8") as recs:
-        faulty_stories = [x.strip("\n ") for x in recs.readlines()]
+        faulty_stories = set([x.strip("\n ") for x in recs.readlines()])
 
     if clean_dirs:
-        print("Clearing existing folders and creating new ones.")
+        print("\tClearing existing folders and creating new ones...")
 
-        #  remove working directories for audio and logs and create fresh ones
-        for path in [audio_dir, log_dir]:
-            if os.path.isdir(path):
-                shutil.rmtree(path)
-            os.mkdir(path)
         dir_lst = [audio_words_path, audio_stories_path,
                 log_words_path, log_stories_path,
                 long_stories_path]
         for mydir in dir_lst:
             pathlib.Path(mydir).mkdir(parents=True, exist_ok=True)
+        print("\tDone.")
 
         # unzip audio and log files into the path specified at call
-        print("Unzipping audio files...")
+        print("\tUnzipping audio files...")
         run(f"unzip -ojqq {audio_raw} -d {audio_dir}", shell=True, check=True)
-        print("Unzipping log files...")
+        print("\tUnzipping log files...")
         run(f"unzip -ojqq {log_raw} -d {log_dir}", shell=True, check=True)
 
         # gather audio files in a list
@@ -73,11 +69,18 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
         for dirpath, dirnames, filenames in os.walk(audio_dir):
             for filename in filenames:
                 if filename.endswith(".webm"):
-                    audio_filelist.append(filename)
 
-
+                    # TODO
+                    # test this
+                    
+                    for fs in faulty_stories:
+                        if fs in filename:
+                            run(f"rm {os.path.join(dirpath, filename)}", shell=True, check=True)
+                        else:
+                            audio_filelist.append(filename)
+        
         # convert .webm files in audio dir to .wav with encoding = pcm_s32le
-        print("Converting audio files from .webm to .wav...")
+        print("\tConverting audio files from .webm to .wav...")
         for file in audio_filelist:
             infile = os.path.join(audio_dir, file)
             outfile = infile.replace('webm', 'wav')
@@ -85,7 +88,7 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
             run(f"rm {infile}", shell=True, check=True)
 
         # move audio files to the correct folder based on task type (words or story)
-        print("Moving audio files...")
+        print("\tMoving audio files...")
         for f in audio_filelist:
             if 'webm' in f:
                 f = f.replace('webm', 'wav')
@@ -108,7 +111,7 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
         log_files = {}
 
         # move log files and assign their location to their rec id in the dict
-        print("Moving log files...")
+        print("\tMoving log files...")
         for f in log_filelist:
             f_old = os.path.join(log_dir, f)
             if "$" in f:
@@ -141,7 +144,7 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
     audio_files = {}
     for dirpath, dirnames, filenames in os.walk(audio_dir):
         for filename in filenames:
-            if filename.endswith(".wav"):
+            if (filename.endswith(".wav")) and ('segments' not in dirpath):
                 rec_id = filename.split('.')[0]
                 filepath = os.path.join(dirpath, filename)
                 audio_files[rec_id] = filepath
@@ -189,7 +192,7 @@ def trim_long_stories(stories_dict, audio_dir):
     that silence marker, then saves it, overwriting the original file.
     If no silence is found, trims at 180s.
     """
-    print(f"Trimming {len(stories_dict.items())} stories to 3 mins...")
+    print(f"\tTrimming {len(stories_dict.items())} stories to 3 mins...")
     
     audio_tmp_dir = os.path.join(audio_dir, "tmp")
     run(f"mkdir {audio_tmp_dir}", check=True, shell=True)

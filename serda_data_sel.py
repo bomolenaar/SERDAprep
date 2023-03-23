@@ -45,11 +45,13 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
 
     long_stories_path = os.path.join(audio_dir, long_stories_dir)
 
+    # load lists of recordings to ignore because they are faulty
+    # (you need to manually create this list)
     with open(ignore_recs, "r", encoding="utf-8") as recs:
-        faulty_stories = set([x.strip("\n ") for x in recs.readlines()])
+        faulty_stories = {x.strip("\n ") for x in recs.readlines()}
 
     if clean_dirs:
-        print("\tClearing existing folders and creating new ones...")
+        print("\tCreating new subfolders...")
 
         dir_lst = [audio_words_path, audio_stories_path,
                 log_words_path, log_stories_path,
@@ -61,23 +63,24 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
         # unzip audio and log files into the path specified at call
         print("\tUnzipping audio files...")
         run(f"unzip -ojqq {audio_raw} -d {audio_dir}", shell=True, check=True)
+        print("\tDone.")
         print("\tUnzipping log files...")
         run(f"unzip -ojqq {log_raw} -d {log_dir}", shell=True, check=True)
+        print("\tDone.")
 
         # gather audio files in a list
         audio_filelist = []
         for dirpath, dirnames, filenames in os.walk(audio_dir):
             for filename in filenames:
                 if filename.endswith(".webm"):
-
-                    # TODO
-                    # test this
-                    
-                    for fs in faulty_stories:
-                        if fs in filename:
-                            run(f"rm {os.path.join(dirpath, filename)}", shell=True, check=True)
-                        else:
-                            audio_filelist.append(filename)
+                    #  remove stories with faulty recordings from the dataset
+                    rec_id = filename.rstrip('.webm')
+                    if rec_id in faulty_stories:
+                        # print(os.path.join(dirpath, filename))
+                        run(f"rm {os.path.join(dirpath, filename)}", shell=True, check=True)
+                    else:
+                        audio_filelist.append(filename)
+        # print([f for f in audio_filelist if "story" in f])
         
         # convert .webm files in audio dir to .wav with encoding = pcm_s32le
         print("\tConverting audio files from .webm to .wav...")
@@ -86,10 +89,13 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
             outfile = infile.replace('webm', 'wav')
             run(f"ffmpeg -hide_banner -loglevel error -i {infile} -c:a pcm_s32le {outfile}", shell=True, check=True)
             run(f"rm {infile}", shell=True, check=True)
+        print("\tDone.")
 
         # move audio files to the correct folder based on task type (words or story)
         print("\tMoving audio files...")
         for f in audio_filelist:
+            # TODO
+            # this webm case should be removable now that there is --clean
             if 'webm' in f:
                 f = f.replace('webm', 'wav')
             f_old = os.path.join(audio_dir, f)
@@ -101,6 +107,7 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
                 shutil.move(f_old, f_new)                     # move to target location
             else:
                 f_new = ''
+        print("\tDone.")
 
         # gather log files in a list and prepare a dict
         log_filelist = []
@@ -128,6 +135,7 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
             rec_id = f.split('.')[0]
             # then link full path to audio to rec ID in a dict
             log_files[rec_id] = f_new
+        print("\tDone.")
 
     else:
         # gather log files in a list and prepare a dict
@@ -155,10 +163,6 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
         # print(rec_id, "\t", audio_files[rec_id], "\t", log_files[rec_id])
         full_dict[rec_id] = audiopath, log_files[rec_id]
     # print(list(full_dict.items())[:10])
-
-    #  remove stories with faulty recordings from the dataset (specified in a txt file)
-    for s in faulty_stories:
-        full_dict.pop(s)
 
     if clean_dirs:
         #  Now we can use the dict to pull matching audio and log files and process them
@@ -232,6 +236,7 @@ def trim_long_stories(stories_dict, audio_dir):
         run(f"rm {audio}", check=True, shell=True)
         run(f"mv {audio_tmp} {audio}", check=True, shell=True)
     shutil.rmtree(audio_tmp_dir)
+    print("\tDone.")
 
 if __name__ == "__main__":
 
@@ -247,6 +252,6 @@ if __name__ == "__main__":
         parser.error("--clean requires --audiozip and --logzip.")
         
     if args.clean:
-        gen_clean_dict(args.audio_path, args.log_path, args.recs_to_ignore, args.clean, args.audio_zip, args.log_zip)
+        gen_clean_dict(args.audio_path, args.log_path, args.recs_to_ignore, args.clean, args.audiozip, args.logzip)
     else:
         gen_clean_dict(args.audio_path, args.log_path, args.recs_to_ignore, args.clean)

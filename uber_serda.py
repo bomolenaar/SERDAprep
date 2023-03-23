@@ -5,9 +5,12 @@ import os
 import sys
 import argparse
 import shutil
+import time
 import serda_data_sel as data_sel
 import serda_data_prep as data_prep
 
+
+t = time.process_time()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--clean', action = 'store_true', required=False,
@@ -50,6 +53,7 @@ prompts_path = os.path.join(args.project_dir, args.prompt_dir)
 
 print("\n###\tSERDA v1 data processing\t###\n")
 
+# remove project folder and audio, logs and prompts subfolders if they already exist
 for mydir in [args.project_dir, args.audio_dir, args.log_dir, args.prompt_dir]:
     if args.clean and os.path.isdir(mydir):
         print("Creating new project dir...")
@@ -71,5 +75,8 @@ print("Done.")
 
 print("\n# Finished preparing data #\n")
 
-print("Please prepare a folder with ASR output for words and story tasks in"
+elapsed_time = time.process_time() - t
+print(f"Elapsed time: {elapsed_time} s")
+
+print("\nPlease prepare a folder with ASR output for story tasks in"
       f" {os.path.join(args.project_dir, 'asr')}, so you can run segment_stories.py")

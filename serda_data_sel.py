@@ -94,10 +94,6 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
         # move audio files to the correct folder based on task type (words or story)
         print("\tMoving audio files...")
         for f in audio_filelist:
-            # TODO
-            # this webm case should be removable now that there is --clean
-            if 'webm' in f:
-                f = f.replace('webm', 'wav')
             f_old = os.path.join(audio_dir, f)
             if "words" in f:
                 f_new = os.path.join(audio_words_path, f)   # keep target as var

@@ -240,14 +240,19 @@ if __name__ == "__main__":
     parser.add_argument('--clean', help = "Flag specifying whether you want to generate new directories. Default=False", action = 'store_true', required=False)
     parser.add_argument('-a', '--audiozip', required='--clean' in sys.argv, help = "Path to raw audio zip. Required when using --clean.")
     parser.add_argument('-l', '--logzip', required='--clean' in sys.argv, help = "Path to raw log zip. Required when using --clean")
-    parser.add_argument('audio_path', help = "Path to audio processing and storing dir")
-    parser.add_argument('log_path', help = "Path to log processing and storing dir")
+    parser.add_argument('project_dir',
+                    help = "Parent project directory where you want to process and store audio, logs, prompts and ASR transcriptions.")
+    parser.add_argument('audio_dir', help = "Name of audio processing and storing dir")
+    parser.add_argument('log_dir', help = "Name of log processing and storing dir")
     parser.add_argument('recs_to_ignore', help = "Location of a file specifying recordings to ignore")
     args = parser.parse_args()
     if args.clean and (args.audiozip is None or args.logzip is None):
         parser.error("--clean requires --audiozip and --logzip.")
         
+    audio_path = os.path.join(args.project_dir, args.audio_dir)
+    log_path = os.path.join(args.project_dir, args.log_dir)
+
     if args.clean:
-        gen_clean_dict(args.audio_path, args.log_path, args.recs_to_ignore, args.clean, args.audiozip, args.logzip)
+        gen_clean_dict(audio_path, log_path, args.recs_to_ignore, args.clean, args.audiozip, args.logzip)
     else:
-        gen_clean_dict(args.audio_path, args.log_path, args.recs_to_ignore, args.clean)
+        gen_clean_dict(audio_path, log_path, args.recs_to_ignore, args.clean)

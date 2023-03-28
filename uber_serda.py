@@ -35,9 +35,9 @@ parser.add_argument('log_dir',
 parser.add_argument('prompt_dir',
                     help = "Path to prompt processing and storing dir. A subdirectory of project_dir."
                     "Default = 'prompts'", default= 'prompts')
-parser.add_argument('prompts_source',
+parser.add_argument('raw_prompts',
                     help = "Path to story prompts."
-                    " Expected prompt files are 1 sentence per line and filenames end with _clean.txt")
+                    " Expected prompt files are 1 sentence per line and filenames are story{1/2/3}_clean.txt")
 parser.add_argument('recs_to_ignore',
                     help = "Location of a .txt file specifying recordings to ignore."
                     " Each line should contain the ID of one recording (! not a path)."
@@ -45,7 +45,7 @@ parser.add_argument('recs_to_ignore',
 
 args = parser.parse_args()
 if args.clean and (args.audiozip is None or args.logzip is None):
-    parser.error("--clean requires --audiozip and --logzip.")
+    parser.error("--clean requires -a/--audiozip and -l/--logzip.")
 
 audio_path = os.path.join(args.project_dir, args.audio_dir)
 logs_path = os.path.join(args.project_dir, args.log_dir)
@@ -70,7 +70,7 @@ print("Done.")
 
 print("\n# 2. Data preparation #\n")
 print("Segmenting data and matching prompts...")
-data_prep.prepare_data(args.clean, full_dict, audio_path, logs_path, args.prompts_source, prompts_path)
+data_prep.prepare_data(args.clean, full_dict, audio_path, logs_path, args.raw_prompts, prompts_path)
 print("Done.")
 
 print("\n# Finished preparing data #\n")

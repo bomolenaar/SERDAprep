@@ -1,14 +1,38 @@
 # SERDAprep
 
-This is a collection of data organisation and preparation scripts for data collected with SERDA within the ASTLA project.
-The scripts require several steps before running.
+This is a collection of scripts to gather, organise and preparare data collected with SERDA within the ASTLA project.
+The scripts require some manual steps before running.
 
 First, some data needs to be downloaded from Citolab manually. Then, audio data can be downloaded through a script + urls of the audio files stored at Cito.
 
+# Example run
+
+1.1 MANUAL-1  
+Manual download of log file zip from `serda-admin.azurewebsites.net` using the top right button ![button](https://imgur.com/FdySJhk) and upload to Ponyland at `/vol/tensusers5/bmolenaar/SERDA/my_log.zip`.
+
+1.2. MANUAL-2  
+Manual download of prompts for story tasks, uploaded to Ponyland at `/vol/tensusers5/bmolenaar/SERDA/raw_prompts/`.
+
+2. AUDIO DOWNLOAD
+
+        download.sh /vol/tensusers5/bmolenaar/SERDA/my_audio/ /vol/tensusers5/bmolenaar/SERDA/urls.txt
+
+3. UBER_SERDA
+
+        python3 uber_serda.py -clean -a /vol/tensusers5/bmolenaar/SERDA/my_audio.zip -l /vol/tensusers5/bmolenaar/SERDA/my_log.zip myproject audio logs prompts /vol/tensusers5/bmolenaar/SERDA/raw_prompts/ /vol/tensusers5/bmolenaar/SERDA/recs_to_ignore.txt
+
+4. MANUAL-3  
+Decode the files in `/vol/tensusers5/bmolenaar/SERDA/myproject/audio/stories/` and place the ASR output in `/vol/tensusers5/bmolenaar/SERDA/myproject/asr/stories/`.
+
+5. SEGMENT_STORIES_ASR
+        
+        python3 segment_stories_ASR.py /vol/tensusers5/bmolenaar/SERDA/myproject/ audio asr prompts
+
+# Explanation of steps
+
 ## 1. Manual downloads
 
-1. Manually download the zip of log files from the SERDA admin environment and copy them to your desired folder (e.g. on Ponyland). This zip should contain [6 * number of speakers] .csv log files.
-
+1. Manually download the zip of log files from the SERDA admin environment (`serda-admin.azurewebsites.net`) and copy them to your desired folder (e.g. on Ponyland). This zip should contain [6 * number of speakers] .csv log files.  
 2. Manually download the prompts for story tasks (either from Cito or copy them from Bo's folder on Ponyland). The files should be named `story{1/2/3}_clean.txt` and contain 1 sentence per line. Don't put these in your project folder or they'll get removed later.
 
 ## 2. `download.sh`
@@ -19,8 +43,7 @@ This is the script to download audio files stored at Cito.
 
     download.sh [target directory] [list of URLs]
 
-The script will download the files from the provided URLs, simplify the filenames, zip the folder and remove the original unzipped folder.
-
+The script will download the files from the provided URLs, simplify the filenames, zip the folder and remove the original unzipped folder.  
 There should be 12 files per speaker:
 
 * 6 audio files
@@ -38,9 +61,8 @@ This script does data selection and preparation by running two separate scripts:
 
     uber_serda.py [--clean] [-a/--audiozip AUDIOZIP] [-l/--logzip LOGZIP] project_dir audio_dir log_dir prompt_dir raw_prompts_dir recs_to_ignore.txt
 
-* `--clean` is an optional flag that determines whether the script will generate clean directories under `project_dir`, starting from just your audio and logs zips. Default behaviour is `False`.
-
-    When using `--clean`, it's required to specify the path to your audio zip with `-a` or `--audiozip`. Similarly, `-l` or `--logzip` is also required and specifies the path to your logs zip.
+* `--clean` is an optional flag that determines whether the script will generate clean directories under `project_dir`, starting from just your audio and logs zips. Default behaviour is `False`.  
+When using `--clean`, it's required to specify the path to your audio zip with `-a` or `--audiozip`. Similarly, `-l` or `--logzip` is also required and specifies the path to your logs zip.
 
 * `project_dir` is the parent directory for your project that will contain `audio_dir`, `log_dir` and `prompt_dir`.
 
@@ -58,7 +80,7 @@ The log files obtained from the SERDA admin environment have some redundant info
 
 A dict is then created for each recording ID, paired with a 2-tuple of the corresponding audio and log filepaths. This dict is used as input for `serda_data_prep.py`.
 
-Due to an oversight during data collection, some recordings for story tasks are over 3 minutes long, which is not intended. Recordings over 180 seconds long are identified and trimed to the nearest silence after 180s. Original long files are kept separately.
+Due to an oversight during data collection, some recordings for story tasks are over 3 minutes long, which is not intended. Recordings over 180 seconds long are identified and trimed to the nearest silence after 180s. Original long files are kept in `audio_dir/long_stories`.
 
 After running this script, you should have a your parent directory with subdirectories for audio and logs, e.g.:
 
@@ -111,14 +133,23 @@ Your directory structure should now look like this:
 
 ## 4. Run ASR on all audio files: words and stories
 
-Here you can use the files prepared by `uber_serda.py` to run ASR and get timestamps, segments, (confidence scores), etc.
-
+Here you can use the files prepared by `uber_serda.py` to run ASR and get timestamps, segments, (confidence scores), etc.  
 ASR output should be placed under `{uber_serda.py parent directory}/asr` for the final step.
+
+Expected format of ASR output is `.json` (this is the extension used by WhisperX, which was our preferred ASR for bootstrapping segments).
 
 ## 5. `segment_stories_ASR.py`
 
 Finally, when ASR output is in place, we can use it to bootstrap segments (=sentences) for each line in story prompts. This script is TODO.
 
-### TODO
+### Usage
 
-expected output at the end
+        segment_stories_ASR.py project_dir audio_dir asr_dir prompt_dir
+
+* `project_dir`, `audio_dir` and `prompt_dir` are the same folders you used for `uber_serda.py` at step 3.
+
+* `asr_dir` is the folder you placed the ASR output in at step 4.
+
+\# TODO what does this script do
+
+### \# TODO expected output at the end

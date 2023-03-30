@@ -115,9 +115,23 @@ def prepare_data(clean_dirs, full_dict, audio_path, log_path, prompts_source, pr
                 prompt = str(row['prompt'])
                 prompt_id = row['prompt_id']
                 segment_chunks = rec_id.rsplit("-", 1)
-                outfile = os.path.join(prompt_words_path,
-                                       f"{segment_chunks[0]}_{prompt_id}-{segment_chunks[1]}.prompt")
-                with open(outfile, "w", encoding="utf-8") as prompt_out:
-                    prompt_out.write(prompt)
+
+                # generate separate prompts matching each variant of the 1st segment case
+                if prompt_id in {101, 201, 301}:
+                    outfile_start_path = os.path.join(prompt_words_path,
+                                        f"{segment_chunks[0]}_{prompt_id}_taskstart-{segment_chunks[1]}.prompt")
+                    with open(outfile_start_path, "w", encoding="utf-8") as prompt_out:
+                        prompt_out.write(prompt)
+
+                    outfile_timestamp_path = outfile_start_path.replace('taskstart', 'logstamp')
+                    with open(outfile_timestamp_path, "w", encoding="utf-8") as prompt_out:
+                        prompt_out.write(prompt)
+
+                # create regular prompt files for all other segments
+                else:
+                    outfile = os.path.join(prompt_words_path,
+                                           f"{segment_chunks[0]}_{prompt_id}-{segment_chunks[1]}.prompt")
+                    with open(outfile, "w", encoding="utf-8") as prompt_out:
+                        prompt_out.write(prompt)
 
             segment_words(full_audio, audio_segments_path, word_segments)

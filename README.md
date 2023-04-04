@@ -7,33 +7,49 @@ First, some data needs to be downloaded from Citolab manually. Then, audio data 
 
 # Example run
 
+1.0 MANUAL-0  
+Set your working directory where you will download this repository and download/copy all other necessary files:
+
+    SERDAdir="/vol/tensusers5/bmolenaar/SERDA"
+    git clone https://github.com/bomolenaar/SERDAprep $SERDAdir
+    cd $SERDAdir
+
+
 1.1 MANUAL-1  
-Manual download of log file zip from `serda-admin.azurewebsites.net` using the top right button ![button](https://imgur.com/FdySJhk) and upload to Ponyland at `/vol/tensusers5/bmolenaar/SERDA/my_log.zip`.
+Manual download of log file zip from `serda-admin.azurewebsites.net` using the top right button <img src="https://i.imgur.com/FdySJhk.png" height="25" /> and upload to Ponyland at `$SERDAdir/my_log.zip`.
 
 1.2. MANUAL-2  
-Manual download of prompts for story tasks, uploaded to Ponyland at `/vol/tensusers5/bmolenaar/SERDA/raw_prompts/`.
+Manual download of prompts for story tasks, uploaded to Ponyland at `$SERDAdir/raw_prompts/`.
 
 2. AUDIO DOWNLOAD
 
-        download.sh /vol/tensusers5/bmolenaar/SERDA/my_audio/ /vol/tensusers5/bmolenaar/SERDA/urls.txt
+        audio_zip=$SERDAdir/my_audio/
+        urls=$SERDAdir/urls.txt
+
+        download.sh $audio_zip $urls
 
 3. UBER_SERDA
 
-        python3 uber_serda.py -clean -a /vol/tensusers5/bmolenaar/SERDA/my_audio.zip -l /vol/tensusers5/bmolenaar/SERDA/my_log.zip myproject audio logs prompts /vol/tensusers5/bmolenaar/SERDA/raw_prompts/ /vol/tensusers5/bmolenaar/SERDA/recs_to_ignore.txt
+        project=$SERDAdir/myproject
+        log_zip=$SERDAdir/my_log.zip
+        raw_prompts=$SERDAdir/docs/raw_prompts
+        ignore_list=$SERDAdir/recs_to_ignore.txt
+
+        python3 uber_serda.py -clean -a $audio_zip -l $log_zip $project audio logs prompts $raw_prompts $ignore_list
 
 4. MANUAL-3  
-Decode the files in `/vol/tensusers5/bmolenaar/SERDA/myproject/audio/stories/` and place the ASR output in `/vol/tensusers5/bmolenaar/SERDA/myproject/asr/stories/`.
+Decode the files in `$project/audio/stories` and place the ASR output in `$project/asr/stories/`.
 
 5. SEGMENT_STORIES_ASR
         
-        python3 segment_stories_ASR.py /vol/tensusers5/bmolenaar/SERDA/myproject/ audio asr prompts
+        python3 segment_stories_ASR.py $project audio asr prompts
 
 # Explanation of steps
 
 ## 1. Manual downloads
 
-1. Manually download the zip of log files from the SERDA admin environment (`serda-admin.azurewebsites.net`) and copy them to your desired folder (e.g. on Ponyland). This zip should contain [6 * number of speakers] .csv log files.  
-2. Manually download the prompts for story tasks (either from Cito or copy them from Bo's folder on Ponyland). The files should be named `story{1/2/3}_clean.txt` and contain 1 sentence per line. Don't put these in your project folder or they'll get removed later.
+1. Manually download the zip of log files from the SERDA admin environment (`serda-admin.azurewebsites.net`) and copy them to your desired folder (e.g. on Ponyland). This zip should contain [6 * number of speakers] .csv log files. Example: `2RRDV-words_1-20230113140713310.csv`.
+2. Manually download the prompts for story tasks (either from Cito or copy them from Bo's folder on Ponyland: `/vol/tensusers5/bmolenaar/SERDA/docs/raw_prompts`). The files should be named `story{1/2/3}_clean.txt` and contain 1 sentence per line. Don't put these in your project folder or they'll get removed later (e.g. place the folder one level up).
 
 ## 2. `download.sh`
 
@@ -68,7 +84,7 @@ When using `--clean`, it's required to specify the path to your audio zip with `
 
 * `raw_prompts` is the path to the directory where you put the story prompt files from step 1.2.
 
-* `recs_to_ignore.txt` is a .txt file specifying recording IDs (**! not paths**) of faulty recordings. For example: `ABCDE-story_1-20230101090012345` One rec ID per line. Faulty recordings can only really occur for story tasks, so this will be a list of story task IDs.
+* `recs_to_ignore.txt` is a .txt file specifying recording IDs (**! not paths**) of faulty recordings. For example: `ABCDE-story_1-20230101090012345` One rec ID per line. Faulty recordings can only really occur for story tasks, so this will be a list of story task IDs. The script will look for the corresponding audio files in your `audio_dir` during data selection and simply ignore them for the rest of the process.
 
 ### `serda_data_sel.py`
 
@@ -144,11 +160,11 @@ Finally, when ASR output is in place, we can use it to bootstrap segments (=sent
 
 ### Usage
 
-        segment_stories_ASR.py project_dir audio_dir asr_dir prompt_dir
+        segment_stories_ASR.py $project_dir $audio_dir $asr_dir $prompt_dir
 
 * `project_dir`, `audio_dir` and `prompt_dir` are the same folders you used for `uber_serda.py` at step 3.
 
-* `asr_dir` is the folder you placed the ASR output in at step 4.
+* `asr_dir` is the folder you placed the ASR output in at step 4 (should be `$project_dir/asr`).
 
 \# TODO what does this script do
 

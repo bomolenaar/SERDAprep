@@ -94,7 +94,7 @@ The audio files obtained from Cito are originally `.webm` format, so they are co
 
 The log files obtained from the SERDA admin environment have some redundant information in the filenames. This is removed in this script.
 
-A dict is then created for each recording ID, paired with a 2-tuple of the corresponding audio and log filepaths. This dict is used as input for `serda_data_prep.py`.
+A dict is then created where each recording ID is paired with a 2-tuple of the corresponding audio and log filepaths. This dict is used as input for `serda_data_prep.py`.
 
 Due to an oversight during data collection, some recordings for story tasks are over 3 minutes long, which is not intended. Recordings over 180 seconds long are identified and trimed to the nearest silence after 180s. Original long files are kept in `audio_dir/long_stories`.
 

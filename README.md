@@ -19,7 +19,7 @@ Set your working directory where you will download this repository and download/
 Manual download of log file zip from `serda-admin.azurewebsites.net` using the top right button <img src="https://i.imgur.com/FdySJhk.png" height="25" /> and upload to Ponyland at `$SERDAdir/my_log.zip`.
 
 1.2. MANUAL-2  
-Manual download of prompts for story tasks, uploaded to Ponyland at `$SERDAdir/raw_prompts/`.
+Manual download of prompts for story tasks, uploaded to Ponyland at `$SERDAdir/docs/raw_prompts/`.
 
 2. AUDIO DOWNLOAD
 
@@ -38,11 +38,16 @@ Manual download of prompts for story tasks, uploaded to Ponyland at `$SERDAdir/r
         python3 uber_serda.py -clean -a $audio_zip -l $log_zip $project audio logs prompts $raw_prompts $ignore_list
 
 4. MANUAL-3  
-Decode the files in `$project/audio/stories` and place the ASR output in `$project/asr/stories/`.
+Decode the files in `$project/audio/words` and `$project/audio/stories` and place the ASR output in `$project/asr/words/` and `$project/asr/stories/`, respectively.
 
-5. SEGMENT_STORIES_ASR
+5. STRING NORMALISATION
+
+        string_norm.py $project/asr/words $project/asr/words_filtered .txt
+        string_norm.py $project/asr/stories $project/asr/stories_filtered .txt
+
+6. SEGMENT_STORIES_ASR
         
-        python3 segment_stories_ASR.py $project audio asr prompts
+        python3 segment_stories_ASR.py $project audio asr/stories_filtered prompts
 
 # Explanation of steps
 
@@ -75,12 +80,12 @@ This script does data selection and preparation by running two separate scripts:
 
 ### Usage
 
-    uber_serda.py [--clean] [-a/--audiozip AUDIOZIP] [-l/--logzip LOGZIP] project_dir audio_dir log_dir prompt_dir raw_prompts_dir recs_to_ignore.txt
+    uber_serda.py [--clean] [-a/--audiozip AUDIOZIP] [-l/--logzip LOGZIP] project_dir audio_dirname log_dirname prompt_dirname raw_prompts_dir recs_to_ignore.txt
 
 * `--clean` is an optional flag that determines whether the script will generate clean directories under `project_dir`, starting from just your audio and logs zips. Default behaviour is `False`.  
 When using `--clean`, it's required to specify the path to your audio zip with `-a` or `--audiozip`. Similarly, `-l` or `--logzip` is also required and specifies the path to your logs zip.
 
-* `project_dir` is the parent directory for your project that will contain `audio_dir`, `log_dir` and `prompt_dir`.
+* `project_dir` is the parent directory for your project that will contain `audio_dirname`, `log_dirname` and `prompt_dirname`. Note that the script asks for names to use for these three subdirectories, not paths. It does not ask for their paths because they have a fixed path already. E.g. use `my_audio`, not `$project_dir/audio`.
 
 * `raw_prompts` is the path to the directory where you put the story prompt files from step 1.2.
 
@@ -118,7 +123,7 @@ After running this script, you should have a your parent directory with subdirec
 
 This script is not ran separately, only from `uber_serda.py` because it takes a `serda_data_sel` dict as input. If you only want to redo data prep, run `uber_serda.py` without --clean.
 
-This data preparation script matches prompts to audio. The `prompt_dir` and `raw_prompts` arguments from your `uber_serda.py` call are used here. For story tasks, whole prompts are assigned since there are no segments available at this stage. For word tasks, the prompted words are assigned to individual word segments.
+This data preparation script matches prompts to audio. The `prompt_dirname` and `raw_prompts` arguments from your `uber_serda.py` call are used here. For story tasks, whole prompts are assigned since there are no segments available at this stage. For word tasks, the prompted words are assigned to individual word segments.
 
 Next, word task recordings are segmented into separate files for each word, based on timestamps from the corresponding log file. There is a special case for the first word in each task, since there is no unambiguous timestamp for when the segment starts. As such, 2 segments are generated: one from the start of the recording and one from the assumed start time of the child speaking.
 
@@ -154,17 +159,25 @@ ASR output should be placed under `{uber_serda.py parent directory}/asr` for the
 
 Expected format of ASR output is `.json` (this is the extension used by WhisperX, which was our preferred ASR for bootstrapping segments).
 
-## 5. `segment_stories_ASR.py`
+## 5. `string_norm.py`
+
+At this point it's necessary to do string normalisation on the ASR output, especially when you use Whisper ASR (or another multilingual ASR) because it may insert non-latin characters in the transcription. This script calls an extended version of `text_filter.py` [(original by Cristian Tejedor García)](https://github.com/cristiantg/kaldi_jasmin/tree/main/data_preparation_kaldi) for each file in a directory. The script asks for an input & output folder and the extension of your files. (Input and output folders can also be the same in which case the script will move some directories around and archive your input folder).
+
+### Usage
+
+        string_norm.py [input_folder] [output_folder] [extension]
+
+## 6. `segment_stories_ASR.py`
 
 Finally, when ASR output is in place, we can use it to bootstrap segments (=sentences) for each line in story prompts. This script is TODO.
 
 ### Usage
 
-        segment_stories_ASR.py $project_dir $audio_dir $asr_dir $prompt_dir
+        segment_stories_ASR.py $project_dir $audio_dirname $asr_dirname $prompt_dirname
 
-* `project_dir`, `audio_dir` and `prompt_dir` are the same folders you used for `uber_serda.py` at step 3.
+* `project_dir`, `audio_dirname` and `prompt_dirname` are the same folders you used for `uber_serda.py` at step 3.
 
-* `asr_dir` is the folder you placed the ASR output in at step 4 (should be `$project_dir/asr`).
+* `asr_dirname` is the folder you placed the ASR output in at step 4 (should be `$project_dir/asr`).
 
 \# TODO what does this script do
 

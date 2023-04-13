@@ -80,7 +80,6 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
                         run(f"rm {os.path.join(dirpath, filename)}", shell=True, check=True)
                     else:
                         audio_filelist.append(filename)
-        # print([f for f in audio_filelist if "story" in f])
         
         # convert .webm files in audio dir to .wav with encoding = pcm_s32le
         print("\tConverting audio files from .webm to .wav...")
@@ -90,6 +89,17 @@ def gen_clean_dict(audio_dir, log_dir, ignore_recs, clean_dirs, audio_raw = None
             run(f"ffmpeg -hide_banner -loglevel error -i {infile} -c:a pcm_s32le {outfile}", shell=True, check=True)
             run(f"rm {infile}", shell=True, check=True)
         print("\tDone.")
+
+        # TODO
+        # check audio filesize with command below
+        # and when it's < 2MB (under 1 min)
+        # 1. add it to a list
+        # 2. raise a warning saying how many items were found that are very small
+        # 3. ask to append this list of rec ids to recs_to_ignore.txt?
+        #
+        # size_command = "du -k $filename | cut -f 1"
+        # example output --> 7036
+        # so check if < 2000
 
         # move audio files to the correct folder based on task type (words or story)
         print("\tMoving audio files...")

@@ -14,7 +14,6 @@ Set your working directory where you will download this repository and download/
     git clone https://github.com/bomolenaar/SERDAprep $SERDAdir
     cd $SERDAdir
 
-
 1.1 MANUAL-1  
 Manual download of log file zip from `serda-admin.azurewebsites.net` using the top right button <img src="https://i.imgur.com/FdySJhk.png" height="25" /> and upload to Ponyland at `$SERDAdir/my_log.zip`.
 
@@ -46,7 +45,7 @@ Decode the files in `$project/audio/words` and `$project/audio/stories` and plac
         string_norm.py $project/asr/stories $project/asr/stories_filtered .txt
 
 6. SEGMENT_STORIES_ASR
-        
+
         python3 segment_stories_ASR.py $project audio asr/stories_filtered prompts
 
 # Explanation of steps
@@ -161,7 +160,7 @@ Expected format of ASR output is `.json` (this is the extension used by WhisperX
 
 ## 5. `string_norm.py`
 
-At this point it's necessary to do string normalisation on the ASR output, especially when you use Whisper ASR (or another multilingual ASR) because it may insert non-latin characters in the transcription. This script calls an extended version of `text_filter.py` [(original by Cristian Tejedor García)](https://github.com/cristiantg/kaldi_jasmin/tree/main/data_preparation_kaldi) for each file in a directory. The script asks for an input & output folder and the extension of your files. (Input and output folders can also be the same in which case the script will move some directories around and archive your input folder).
+At this point it's necessary to do string normalisation on the ASR output, especially when you use Whisper ASR (or another multilingual ASR) because it may insert non-latin characters in the transcription. This script calls `text_filter_adapt.py`, an extended version of `text_filter.py` [(original by Cristian Tejedor García)](https://github.com/cristiantg/kaldi_jasmin/tree/main/data_preparation_kaldi) for each file in a directory. The script asks for an input & output folder and the extension of your files. (Input and output folders can also be the same in which case the script will move some directories around and archive your input folder).
 
 ### Usage
 
@@ -181,4 +180,36 @@ Finally, when ASR output is in place, we can use it to bootstrap segments (=sent
 
 \# TODO what does this script do
 
-### \# TODO expected output at the end
+## Expected output
+
+With the current status of these scripts, running everything up to and including step 5 should leave you with the following:
+
+    myproject
+        asr
+            .stories_unfiltered
+                speaker1_story1.txt, speaker1_story2.txt, etc.
+            .words_unfiltered
+                speaker1_words1_102.txt, speaker1_words1_103.txt, etc.    
+            stories
+                speaker1_story1.txt, speaker1_story2.txt, etc.
+            words
+                speaker1_words1_102.txt, speaker1_words1_103.txt, etc.
+        audio
+            long_stories
+            stories
+                speaker1_story1.wav, speaker1_story2.wav, etc.
+            words
+                full
+                    speaker1_words1.wav, speaker1_words2.wav, etc.
+                segments
+                    speaker1_words1_102.wav, speaker1_words_103.wav, etc.
+        logs
+            stories
+                speaker1_story1.csv, speaker1_story2.csv, etc.
+            words
+                speaker1_words1.csv, speaker1_words2.csv, etc.
+        prompts
+            stories
+                speaker1_story1.prompt, speaker1_story2.prompt, etc.
+            words
+                speaker1_words1_102.prompt, speaker1_words_103.prompt, etc.
